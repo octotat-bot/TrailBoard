@@ -3,7 +3,7 @@ import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import { Awareness } from 'y-protocols/awareness'
 
-import { createIdentity, type Identity } from './identity'
+import { loadIdentity, type Identity } from './identity'
 import { getNotesMap, type NotesMap } from './notes'
 import type { PresenceState } from './presence'
 
@@ -59,7 +59,7 @@ export function useBoardSession(boardId: string): UseBoardSessionResult {
     // Constructed explicitly rather than letting the provider create one, so the
     // identity is published before the socket opens and the lifetime is ours.
     const awareness = new Awareness(doc)
-    const identity = createIdentity()
+    const identity = loadIdentity()
     const initial: PresenceState = { user: identity, cursor: null }
     awareness.setLocalState(initial)
 
