@@ -28,40 +28,93 @@
   position: absolute;
   width: 200px;
   min-height: 150px;
-  padding: 30px 15px 15px;
+  padding: 30px 16px 26px;
   border: 1.5px solid transparent;
-  border-radius: 2px;
+  border-radius: 3px;
   cursor: grab;
   user-select: none;
   /* Scoped to the note, not the board: dragging a note must not pan the canvas,
      but two-finger panning of the board itself should still work. */
   touch-action: none;
+
+  /*
+   * The three parts of the transform are separate variables so they can be set
+   * from different places without overwriting each other: the tilt comes from
+   * the note's id in JS, while the lift and scale are pure hover/drag state and
+   * belong here. Composing them in one declaration is what lets a hover rule
+   * raise a note that JS has already rotated.
+   */
+  --lift: 0px;
+  --scale: 1;
+  transform: translateY(var(--lift)) rotate(var(--tilt, 0deg)) scale(var(--scale));
+
+  /* A hairline under the bottom edge, not a drop shadow — it reads as the
+     thickness of the paper while the note still sits flat on the wall. */
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.07);
   transition:
     transform 140ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 140ms ease,
     border-color 140ms ease;
+  /* Opacity only. Animating the transform here would fight the tilt. */
+  animation: note-in 180ms ease-out;
 }
 
+.note:hover {
+  --lift: -2px;
+  box-shadow:
+    0 4px 12px rgb(59 66 82 / 0.1),
+    0 1px 0 rgb(0 0 0 / 0.07);
+}
+
+/* Must follow :hover — same specificity, so this wins only by coming later. */
 .note.is-dragging {
   cursor: grabbing;
-  /* No transition while dragging: the note must track the pointer exactly. The
-     easing is for the settle on release, not the drag itself. */
-  transition: none;
+  --lift: -4px;
+  --scale: 1.02;
+  box-shadow: 0 8px 18px rgb(59 66 82 / 0.13);
+  /* Deliberately omits transform: the note has to track the pointer exactly.
+     The easing is for the settle on release, not the drag itself. */
+  transition: box-shadow 140ms ease;
 }
 
 .note.is-editing {
   cursor: default;
 }
 
+@keyframes note-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .note-text {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .note-hint {
-  opacity: 0.5;
+  opacity: 0.45;
+}
+
+/* The writer's presence colour, so initials on a note match their cursor. */
+.note-author {
+  position: absolute;
+  right: 9px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+  user-select: none;
 }
 
 .note-input {
@@ -74,8 +127,8 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 15px;
+  line-height: 1.5;
   resize: none;
   outline: none;
   cursor: text;
@@ -236,19 +289,88 @@
   color: var(--ink);
 }
 
+/* --- toolbar ------------------------------------------------------------- */
+
+/*
+ * One floating bar rather than loose buttons, so the board has a single obvious
+ * place to act from. Translucent with a blur so notes scrolling underneath stay
+ * faintly visible and the bar reads as sitting above the wall.
+ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 0.88);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 3px 14px rgb(59 66 82 / 0.08);
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--hairline);
+}
+
+.tool {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    opacity 140ms ease,
+    color 140ms ease;
+}
+
+.tool:hover:not(:disabled) {
+  background: rgb(59 66 82 / 0.07);
+}
+
+/* Undo with an empty stack stays visible but plainly inert, so the control
+   never disappears and shifts the rest of the bar sideways. */
+.tool:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.tool-wide {
+  width: auto;
+  padding: 0 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.tool-wide.is-done {
+  color: var(--teal);
+}
+
+/* Filled rather than outlined: the one thing a new board wants you to do. */
 .primary {
   padding: 8px 15px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--ink);
   border-radius: 7px;
-  background: #fff;
-  color: var(--ink);
+  background: var(--ink);
+  color: #fff;
   font-size: 13px;
   cursor: pointer;
-  transition: border-color 140ms ease;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
 }
 
 .primary:hover {
-  border-color: #b4b9ae;
+  background: #2c3340;
+  border-color: #2c3340;
 }
 
 /* --- presence ------------------------------------------------------------ */
@@ -369,9 +491,23 @@
   .status-dot,
   .empty,
   .primary,
+  .tool,
   .note-actions,
   .chrome-home {
     transition: none;
+  }
+
+  /* The hover lift is motion too, not just decoration. */
+  .note {
+    animation: none;
+  }
+
+  .note:hover {
+    --lift: 0px;
+  }
+
+  .note.is-dragging {
+    --lift: 0px;
   }
 
   .trail-dot {

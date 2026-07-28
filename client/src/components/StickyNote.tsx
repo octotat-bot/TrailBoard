@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type * as Y from 'yjs'
 
 import {
+  bringToFront,
   deleteNote,
   getNoteText,
   moveNote,
@@ -73,6 +74,12 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
     // Buttons and the textarea opt out so clicking them never starts a drag.
     if ((e.target as HTMLElement).closest('[data-no-drag]') !== null) return
 
+    // Touching a note pulls it out from under whatever is covering it. Done
+    // before the drag rather than after so the note is on top for the whole
+    // gesture, and skipped internally when it already is, so a click on the
+    // top note is not a document write.
+    bringToFront(doc, id)
+
     origin.current = {
       pointerX: e.clientX,
       pointerY: e.clientY,
@@ -121,16 +128,20 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
   return (
     <div
       className={`note${dragging ? ' is-dragging' : ''}${editing ? ' is-editing' : ''}`}
-      style={{
-        left: note.x,
-        top: note.y,
-        background: swatch.fill,
-        color: swatch.ink,
-        borderColor: dragging ? swatch.ink : 'transparent',
-        // The tilt is baked into the same transform as the drag lift so the two
-        // compose instead of overwriting one another.
-        transform: `rotate(${tilt}deg) scale(${dragging ? 1.02 : 1})`
-      }}
+      style={
+        {
+          left: note.x,
+          top: note.y,
+          zIndex: note.z,
+          background: swatch.fill,
+          color: swatch.ink,
+          borderColor: dragging ? swatch.ink : 'transparent',
+          // Only the tilt is set here. The lift and scale are CSS variables the
+          // stylesheet composes into one transform, because an inline transform
+          // would outrank any :hover rule and make a hover lift impossible.
+          '--tilt': `${tilt}deg`
+        } as React.CSSProperties
+      }
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={endDrag}
@@ -169,6 +180,19 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
         <p className="note-text">
           {note.text.length > 0 ? note.text : <span className="note-hint">Double-click to edit</span>}
         </p>
+      )}
+
+      {/* Reuses the author's presence colour, so the initials on a note match
+          the cursor of whoever is writing it. Absent on notes made before
+          authorship was recorded, which is why it is conditional. */}
+      {note.author !== null && (
+        <span
+          className="note-author"
+          style={{ background: note.author.color }}
+          title={`Added by ${note.author.name}`}
+        >
+          {note.author.initials}
+        </span>
       )}
     </div>
   )

@@ -1,11 +1,13 @@
 import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 
-import { addNote, randomNoteColor } from '../collab/notes'
+import { addNote, randomNoteColor, topZ } from '../collab/notes'
 import { useCanvasExtent } from '../collab/useCanvasExtent'
 import { useCursorBroadcast } from '../collab/useCursorBroadcast'
 import { useNoteIds } from '../collab/useNote'
+import { useUndoManager } from '../collab/useUndoManager'
 import type { BoardSession, ConnectionStatus } from '../collab/useBoardSession'
+import { useCopyLink } from '../lib/useCopyLink'
 import { NOTE_MIN_HEIGHT, NOTE_WIDTH } from '../theme/layout'
 import { EmptyState } from './EmptyState'
 import { PresenceBar } from './PresenceBar'
@@ -18,13 +20,36 @@ interface BoardProps {
   status: ConnectionStatus
 }
 
+/** Redo is the same arrow mirrored, so one path serves both. */
+function UndoIcon({ flipped = false }: { flipped?: boolean }) {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={flipped ? { transform: 'scaleX(-1)' } : undefined}
+    >
+      <path d="M2.5 5.5h7a3.5 3.5 0 0 1 0 7H6" />
+      <path d="M5 2.5 2 5.5l3 3" />
+    </svg>
+  )
+}
+
 export function Board({ session, status }: BoardProps) {
-  const { doc, notes, boardId, awareness } = session
+  const { doc, notes, boardId, awareness, identity } = session
   const ids = useNoteIds(notes)
   const extent = useCanvasExtent(notes)
   const viewportRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
   const cursor = useCursorBroadcast(awareness, canvasRef)
+  const history = useUndoManager(notes)
+  const link = useCopyLink()
 
   const handleCreate = () => {
     const viewport = viewportRef.current
@@ -39,7 +64,10 @@ export function Board({ session, status }: BoardProps) {
     addNote(doc, {
       x: Math.max(0, Math.round(x)),
       y: Math.max(0, Math.round(y)),
-      color: randomNoteColor()
+      color: randomNoteColor(),
+      // A new note belongs on top of the pile, not underneath it.
+      z: topZ(notes) + 1,
+      author: { name: identity.name, initials: identity.initials, color: identity.color }
     })
   }
 
@@ -86,9 +114,45 @@ export function Board({ session, status }: BoardProps) {
       </div>
 
       <div className="chrome chrome-bottom">
-        <button type="button" className="primary" onClick={handleCreate}>
-          New note
-        </button>
+        <div className="toolbar">
+          <button
+            type="button"
+            className="tool"
+            onClick={history.undo}
+            disabled={!history.canUndo}
+            title="Undo your last change"
+            aria-label="Undo"
+          >
+            <UndoIcon />
+          </button>
+          <button
+            type="button"
+            className="tool"
+            onClick={history.redo}
+            disabled={!history.canRedo}
+            title="Redo"
+            aria-label="Redo"
+          >
+            <UndoIcon flipped />
+          </button>
+
+          <span className="toolbar-divider" aria-hidden="true" />
+
+          <button type="button" className="primary" onClick={handleCreate}>
+            New note
+          </button>
+
+          <span className="toolbar-divider" aria-hidden="true" />
+
+          <button
+            type="button"
+            className={`tool tool-wide${link.copied ? ' is-done' : ''}`}
+            onClick={link.copy}
+            title="Copy this board's link"
+          >
+            {link.copied ? 'Copied' : 'Copy link'}
+          </button>
+        </div>
       </div>
     </div>
   )

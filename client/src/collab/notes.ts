@@ -3,6 +3,17 @@ import * as Y from 'yjs'
 export const NOTE_COLORS = ['butter', 'sage', 'coral', 'sky', 'lilac'] as const
 export type NoteColor = (typeof NOTE_COLORS)[number]
 
+/**
+ * Who wrote a note. Written once when the note is created and never touched
+ * again, so unlike position or colour it needs no conflict granularity of its
+ * own and can live as one plain value.
+ */
+export interface NoteAuthor {
+  name: string
+  initials: string
+  color: string
+}
+
 /** A note as the React layer wants to consume it: a plain, readonly snapshot. */
 export interface Note {
   id: string
@@ -11,6 +22,9 @@ export interface Note {
   color: NoteColor
   text: string
   createdAt: number
+  /** Stacking order. Absent on notes written before this existed, hence 0. */
+  z: number
+  author: NoteAuthor | null
 }
 
 /**
@@ -54,6 +68,8 @@ export interface NewNoteInput {
   y: number
   color: NoteColor
   text?: string
+  author?: NoteAuthor
+  z?: number
 }
 
 /**
@@ -69,6 +85,8 @@ export function addNote(doc: Y.Doc, input: NewNoteInput): string {
     yNote.set('y', input.y)
     yNote.set('color', input.color)
     yNote.set('createdAt', Date.now())
+    yNote.set('z', input.z ?? 0)
+    if (input.author !== undefined) yNote.set('author', input.author)
     // Attaching the Y.Text to the map is what integrates it into the document.
     yNote.set('text', new Y.Text(input.text ?? ''))
     getNotesMap(doc).set(id, yNote)
@@ -98,6 +116,45 @@ export function setNoteColor(doc: Y.Doc, id: string, color: NoteColor): void {
   getNotesMap(doc).get(id)?.set('color', color)
 }
 
+/** Highest `z` currently in use, so callers can stack a new note on top. */
+export function topZ(notes: NotesMap): number {
+  let max = 0
+  notes.forEach((yNote) => {
+    const z = yNote.get('z')
+    if (typeof z === 'number' && z > max) max = z
+  })
+  return max
+}
+
+/**
+ * Raises one note above the rest.
+ *
+ * `z` is its own key, so raising a note cannot disturb a concurrent move or
+ * recolour of that same note. Two people raising different notes at the same
+ * instant can land on the same `z`; the tie just resolves by render order and
+ * the next click settles it, which is a far better failure than serialising
+ * every click through a lock.
+ *
+ * Skipped when the note already outranks everything else, so a drag does not
+ * write to the document before it has actually moved anything.
+ */
+export function bringToFront(doc: Y.Doc, id: string): void {
+  const notes = getNotesMap(doc)
+  const target = notes.get(id)
+  if (target === undefined) return
+
+  let highestOther = 0
+  notes.forEach((yNote, otherId) => {
+    if (otherId === id) return
+    const z = yNote.get('z')
+    if (typeof z === 'number' && z > highestOther) highestOther = z
+  })
+
+  const current = target.get('z')
+  if (typeof current === 'number' && current > highestOther) return
+  target.set('z', highestOther + 1)
+}
+
 /** The live Y.Text for a note's body, for binding directly to a textarea. */
 export function getNoteText(notes: NotesMap, id: string): Y.Text | null {
   const text = notes.get(id)?.get('text')
@@ -106,6 +163,16 @@ export function getNoteText(notes: NotesMap, id: string): Y.Text | null {
 
 const isNoteColor = (v: unknown): v is NoteColor =>
   typeof v === 'string' && (NOTE_COLORS as readonly string[]).includes(v)
+
+/** Author travels as a plain value, so it gets the same distrust as the rest. */
+function readAuthor(value: unknown): NoteAuthor | null {
+  if (typeof value !== 'object' || value === null) return null
+  const { name, initials, color } = value as Partial<NoteAuthor>
+  if (typeof name !== 'string' || typeof initials !== 'string' || typeof color !== 'string') {
+    return null
+  }
+  return { name, initials, color }
+}
 
 /**
  * Reads one note into a plain snapshot. Returns null for anything malformed —
@@ -120,6 +187,7 @@ export function readNote(id: string, yNote: unknown): Note | null {
   const color = yNote.get('color')
   const text = yNote.get('text')
   const createdAt = yNote.get('createdAt')
+  const z = yNote.get('z')
 
   if (typeof x !== 'number' || typeof y !== 'number') return null
 
@@ -129,7 +197,9 @@ export function readNote(id: string, yNote: unknown): Note | null {
     y,
     color: isNoteColor(color) ? color : 'butter',
     text: text instanceof Y.Text ? text.toString() : typeof text === 'string' ? text : '',
-    createdAt: typeof createdAt === 'number' ? createdAt : 0
+    createdAt: typeof createdAt === 'number' ? createdAt : 0,
+    z: typeof z === 'number' ? z : 0,
+    author: readAuthor(yNote.get('author'))
   }
 }
 
