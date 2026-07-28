@@ -1,5 +1,6 @@
 export const NOTE_WIDTH = 200
-export const NOTE_MIN_HEIGHT = 150
+/** Near-square, the proportion of an actual sticky note. Must track the CSS. */
+export const NOTE_MIN_HEIGHT = 190
 
 /** Breathing room kept beyond the furthest note so there is always space to drag into. */
 export const CANVAS_PADDING = 320

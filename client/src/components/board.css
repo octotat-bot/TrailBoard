@@ -26,9 +26,19 @@
 
 .note {
   position: absolute;
+  /*
+   * Near-square, like a real sticky note, and the content is centred within it.
+   * A short line pinned to the top of a tall rectangle reads as an unfinished
+   * note; the same line centred in a square reads as a deliberate one. Padding
+   * is symmetrical so that centring is true, and both ends are deep enough to
+   * clear the controls at the top and the author chip at the bottom.
+   */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   width: 200px;
-  min-height: 150px;
-  padding: 30px 16px 26px;
+  min-height: 190px;
+  padding: 30px 18px;
   border: 1.5px solid transparent;
   border-radius: 3px;
   cursor: grab;
@@ -48,9 +58,12 @@
   --scale: 1;
   transform: translateY(var(--lift)) rotate(var(--tilt, 0deg)) scale(var(--scale));
 
-  /* A hairline under the bottom edge, not a drop shadow — it reads as the
-     thickness of the paper while the note still sits flat on the wall. */
-  box-shadow: 0 1px 0 rgb(0 0 0 / 0.07);
+  /* A hairline under the bottom edge and a faint sheen along the top. Neither
+     is a drop shadow; together they read as the thickness of a piece of paper
+     catching the light, while the note still sits flat on the wall. */
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    0 1px 0 rgb(0 0 0 / 0.07);
   transition:
     transform 140ms cubic-bezier(0.2, 0.7, 0.3, 1),
     box-shadow 140ms ease,
@@ -62,6 +75,7 @@
 .note:hover {
   --lift: -2px;
   box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
     0 4px 12px rgb(59 66 82 / 0.1),
     0 1px 0 rgb(0 0 0 / 0.07);
 }
@@ -71,7 +85,9 @@
   cursor: grabbing;
   --lift: -4px;
   --scale: 1.02;
-  box-shadow: 0 8px 18px rgb(59 66 82 / 0.13);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    0 8px 18px rgb(59 66 82 / 0.13);
   /* Deliberately omits transform: the note has to track the pointer exactly.
      The easing is for the settle on release, not the drag itself. */
   transition: box-shadow 140ms ease;
@@ -87,16 +103,25 @@
   }
 }
 
+/*
+ * The display face rather than the body face. Chrome stays in IBM Plex because
+ * chrome should recede, but a note is the content — Bricolage gives it enough
+ * character to read as something a person wrote rather than a form field.
+ */
 .note-text {
   margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.38;
+  letter-spacing: -0.012em;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .note-hint {
-  opacity: 0.45;
+  font-weight: 400;
+  opacity: 0.42;
 }
 
 /* The writer's presence colour, so initials on a note match their cursor. */
@@ -117,20 +142,29 @@
   user-select: none;
 }
 
+/*
+ * Metrics identical to .note-text, and the height is driven from JS to match the
+ * content. Both matter because the two swap places on double-click: any
+ * difference in size or spacing shows up as the text jumping as you start to
+ * type, which is very visible when the note centres its content.
+ */
 .note-input {
   display: block;
   width: 100%;
-  min-height: 92px;
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
-  font: inherit;
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.38;
+  letter-spacing: -0.012em;
   resize: none;
   outline: none;
+  /* Auto-sized, so an overflow scrollbar should never appear. */
+  overflow: hidden;
   cursor: text;
   user-select: text;
 }
@@ -199,14 +233,26 @@
 
 /* --- empty state --------------------------------------------------------- */
 
+/*
+ * Centred on the viewport, not on the canvas. The canvas is sized to hold the
+ * furthest note and rounded up in steps, so it is routinely taller than the
+ * window — centring within it would drop the placeholder below the fold, which
+ * is also where the toolbar is. Fixed positioning also puts it exactly where
+ * clicking it will place the note, since new notes land at the viewport centre.
+ */
 .empty {
-  position: absolute;
+  position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 260px;
-  min-height: 150px;
+  /* Deliberately note-shaped, so the placeholder reads as the outline of the
+     thing you are about to make rather than a generic panel. */
+  display: grid;
+  place-items: center;
+  width: 232px;
+  min-height: 190px;
   padding: 20px;
+  text-align: center;
   border: 1.5px dashed #c9ccc4;
   border-radius: 3px;
   background: transparent;

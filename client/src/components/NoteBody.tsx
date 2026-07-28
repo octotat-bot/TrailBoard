@@ -18,6 +18,20 @@ interface NoteBodyProps {
  * local input is translated into insert/delete operations, and remote operations
  * are written into the DOM with the caret remapped around them.
  */
+/**
+ * Grows the field to fit its content.
+ *
+ * A textarea does not size to its text; left alone it keeps a fixed height and
+ * scrolls internally, so a long note would look different while being edited
+ * than it does at rest. Collapsing to `auto` first is what makes it shrink
+ * again after a deletion — scrollHeight can never report less than the current
+ * height.
+ */
+function autoSize(el: HTMLTextAreaElement): void {
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
 export function NoteBody({ ytext, onFinish }: NoteBodyProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -26,6 +40,7 @@ export function NoteBody({ ytext, onFinish }: NoteBodyProps) {
     if (el === null) return
 
     el.value = ytext.toString()
+    autoSize(el)
     el.focus()
     el.setSelectionRange(el.value.length, el.value.length)
 
@@ -37,6 +52,8 @@ export function NoteBody({ ytext, onFinish }: NoteBodyProps) {
       const end = mapCaret(el.selectionEnd, event.delta)
       el.value = ytext.toString()
       el.setSelectionRange(start, end)
+      // A peer's edit changes the line count too.
+      autoSize(el)
     }
 
     ytext.observe(observer)
@@ -48,9 +65,17 @@ export function NoteBody({ ytext, onFinish }: NoteBodyProps) {
       ref={ref}
       className="note-input"
       data-no-drag
+      // A textarea defaults to two rows, and `rows` is the floor that collapsing
+      // to `height: auto` measures against. Left at the default, a one-line note
+      // would measure two lines tall and the text would visibly shift the moment
+      // you double-clicked it.
+      rows={1}
       spellCheck={false}
       placeholder="Type something"
-      onInput={(e) => applyTextDiff(ytext, e.currentTarget.value)}
+      onInput={(e) => {
+        applyTextDiff(ytext, e.currentTarget.value)
+        autoSize(e.currentTarget)
+      }}
       onBlur={onFinish}
       onKeyDown={(e) => {
         if (e.key === 'Escape') {
