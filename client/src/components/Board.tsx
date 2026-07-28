@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import { Link } from 'react-router-dom'
 
 import { addNote, randomNoteColor } from '../collab/notes'
 import { useCanvasExtent } from '../collab/useCanvasExtent'
@@ -66,6 +67,14 @@ export function Board({ session, status }: BoardProps) {
       </div>
 
       <div className="chrome chrome-left">
+        {/* The way back out. A router Link rather than an anchor so leaving a
+            board does not reload the app, and the wordmark rather than a "back"
+            control because there is no history to go back to when someone
+            arrives on a shared link. */}
+        <Link to="/" className="chrome-home" title="Home">
+          Trailboard
+        </Link>
+        <span className="chrome-divider" aria-hidden="true" />
         <span className={`status-dot status-${status}`} />
         <span className="status-label">
           {status === 'connected' ? `board / ${boardId}` : 'reconnecting'}
