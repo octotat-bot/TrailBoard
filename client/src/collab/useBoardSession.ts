@@ -66,7 +66,20 @@ export function useBoardSession(boardId: string): UseBoardSessionResult {
     // The provider appends the room name to the base URL, so this opens
     // ws://localhost:1234/<boardId> — which is exactly what the server parses
     // back out to pick the room. It also handles reconnect with backoff.
-    const provider = new WebsocketProvider(WS_URL, boardId, doc, { awareness })
+    //
+    // disableBc turns off the BroadcastChannel shortcut between same-browser
+    // tabs. It has to be off: the provider relays awareness changes to the
+    // server without checking their origin, so a tab that hears about a peer
+    // over BroadcastChannel re-publishes that peer's state down its own socket.
+    // The server files a client id against the first connection it arrives on,
+    // so the peer ends up owned by the wrong socket and never gets cleaned up
+    // when its own closes — every refresh left a ghost avatar behind until the
+    // 30s awareness timeout swept it. Losing the shortcut only costs a
+    // round-trip through a server the tabs are both connected to anyway.
+    const provider = new WebsocketProvider(WS_URL, boardId, doc, {
+      awareness,
+      disableBc: true
+    })
 
     const handleStatus = ({ status: next }: { status: ConnectionStatus }) => setStatus(next)
     const handleSync = (isSynced: boolean) => setSynced(isSynced)
