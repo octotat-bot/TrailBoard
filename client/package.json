@@ -1,0 +1,37 @@
+{
+  "name": "@trailboard/client",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-router-dom": "^7.18.1",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^1.5.4",
+    "yjs": "^13.6.31"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1"
+  },
+  "comments": {
+    "react-router-dom": "No 7.x release is free of advisories: `npm audit` bounces between 7.11.0 (14 SSR/redirect CVEs) and 7.18.1 (one RSC-mode CSRF issue, GHSA-qwww-vcr4-c8h2). We track latest because it fixes all 14 and the remaining advisory only applies to RSC/framework mode, which this SPA does not use - we render a plain BrowserRouter with no loaders, actions, or server rendering.",
+    "overrides": "y-websocket 1.5.x declares y-leveldb, a server-only native LevelDB binding that the browser bundle never imports. Pinning it to 0.2 avoids the deprecated `leveldown` build in the client install."
+  },
+  "overrides": {
+    "y-leveldb": "^0.2.0"
+  }
+}

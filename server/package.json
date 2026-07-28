@@ -1,0 +1,38 @@
+{
+  "name": "@trailboard/server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Yjs WebSocket sync server for Trailboard boards",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke:write": "node scripts/smoke.cjs write",
+    "smoke:read": "node scripts/smoke.cjs read",
+    "clean": "rm -rf dist data"
+  },
+  "dependencies": {
+    "y-leveldb": "^0.2.0",
+    "y-protocols": "^1.0.7",
+    "y-websocket": "^1.5.4",
+    "yjs": "^13.6.31",
+    "ws": "^8.18.0"
+  },
+  "comments": {
+    "overrides": "y-websocket 1.5.x declares y-leveldb@0.1.x, which drags in the deprecated native leveldown build. We never load it (we install our own persistence via setPersistence instead of the YPERSISTENCE env var), so we pin the whole tree to y-leveldb 0.2 / classic-level."
+  },
+  "overrides": {
+    "y-leveldb": "^0.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

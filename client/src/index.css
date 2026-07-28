@@ -1,0 +1,43 @@
+/* Globals and design tokens — board styling lives in components/board.css. */
+
+:root {
+  /* Surface */
+  --paper: #f6f7f5;
+  --dot: #d6d9d2;
+
+  /* Chrome stays quiet: one ink colour for all text and icons. */
+  --ink: #3b4252;
+  --ink-muted: #8b91a1;
+  --hairline: #d6d9d2;
+  --teal: #1fa6a0;
+
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
