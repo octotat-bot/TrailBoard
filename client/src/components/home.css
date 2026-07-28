@@ -1,0 +1,433 @@
+/*
+ * Landing page: the door into a board.
+ *
+ * Same tokens as the board — paper surface, quiet graphite chrome, display face
+ * for the one headline, mono for anything that is an identifier or a timestamp.
+ * The only loud element on the page is the single primary action.
+ */
+
+.home {
+  /* body sets overflow:hidden for the board, so the page owns its own scroll. */
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  /* The dot grid is the page's own surface rather than a panel drawn on it, so
+     the demo notes sit on the same wall as the headline instead of inside a
+     screenshot of one. */
+  background-color: var(--paper);
+  background-image: radial-gradient(circle at center, var(--dot) 1px, transparent 1.1px);
+  background-size: 18px 18px;
+}
+
+.home-inner {
+  display: grid;
+  grid-template-columns: minmax(300px, 440px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+  /* Packed to the top rather than centred: spare height belongs below the fold,
+     not as an empty band above the headline. Without this, grid also stretches
+     the auto rows to fill and the stacked layout gets a hole in the middle. */
+  align-content: start;
+  max-width: 1060px;
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 44px 32px 56px;
+}
+
+/* --- copy ---------------------------------------------------------------- */
+
+.wordmark {
+  margin: 0 0 26px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.home-title {
+  margin: 0 0 14px;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 3.6vw, 40px);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.home-sub {
+  max-width: 44ch;
+  margin: 0 0 26px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+.home-start {
+  padding: 12px 22px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 140ms ease;
+}
+
+.home-start:hover {
+  background: #2d3340;
+}
+
+/* --- join ---------------------------------------------------------------- */
+
+.home-join {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--hairline);
+}
+
+.home-join-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+
+.home-join-row {
+  display: flex;
+  gap: 8px;
+}
+
+.home-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms ease;
+}
+
+.home-input:focus {
+  border-color: var(--ink-muted);
+}
+
+.home-input::placeholder {
+  color: var(--ink-muted);
+  opacity: 0.75;
+}
+
+.home-error {
+  margin: 8px 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  /* The coral note's ink tone, so a failure stays inside the palette. */
+  color: #7a2e12;
+}
+
+/* --- recent boards ------------------------------------------------------- */
+
+.recent {
+  margin-top: 30px;
+}
+
+.recent-title {
+  margin: 0 0 9px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+
+.recent-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.recent-open {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease;
+}
+
+.recent-open:hover {
+  border-color: var(--hairline);
+  background: #fff;
+}
+
+.recent-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-time {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.recent-forget {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.recent-forget:hover {
+  background: rgb(0 0 0 / 0.06);
+  color: var(--ink);
+}
+
+.recent-note {
+  margin: 10px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+/* --- ambient demo -------------------------------------------------------- */
+
+.demo {
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+}
+
+/*
+ * Purely a coordinate space: no border, no fill, no clipping. It exists so the
+ * notes and cursors can be placed in percentages and reflow with the column,
+ * while appearing to float directly on the page.
+ */
+.demo-stage {
+  position: relative;
+  aspect-ratio: 3 / 2;
+}
+
+.demo-note {
+  position: absolute;
+  width: 124px;
+  min-height: 86px;
+  padding: 12px;
+  border-radius: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  transform: rotate(var(--tilt));
+  animation: demo-settle 620ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: var(--settle-delay);
+}
+
+/* Drifts in and comes to rest at its own tilt, staggered one note after another. */
+@keyframes demo-settle {
+  from {
+    opacity: 0;
+    transform: translateY(16px) rotate(0deg) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--tilt)) scale(1);
+  }
+}
+
+.demo-actor {
+  position: absolute;
+  inset: 0;
+}
+
+.demo-cursor {
+  position: absolute;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.demo-trail {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  /* Centred on the path point, matching how the real trail dots sit. */
+  margin: -6.5px 0 0 -6.5px;
+  border-radius: 50%;
+}
+
+.demo-cursor,
+.demo-trail {
+  /* Linear, not eased: easing parks the pointer at every waypoint, and someone
+     glancing at the page for two seconds is likely to catch it during a pause.
+     A constant glide is always visibly moving. */
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/*
+ * Each path is declared once and shared by the pointer and its trail dots; the
+ * dots differ only by a negative animation-delay, which is what places them
+ * behind the head. The static left/top is the resting position used when motion
+ * is reduced and the animation never runs.
+ */
+.demo-path-a {
+  left: 30%;
+  top: 33%;
+  animation-name: demo-path-a;
+  animation-duration: 11000ms;
+}
+
+.demo-path-b {
+  left: 54%;
+  top: 14%;
+  animation-name: demo-path-b;
+  animation-duration: 9000ms;
+}
+
+/*
+ * Both loops are routed to pass over the notes rather than around them, so the
+ * trail is seen crossing the things it is meant to draw attention to. The two
+ * are biased to opposite bands — one works the lower half, the other the top —
+ * which keeps the name labels from stacking on top of each other.
+ *
+ * Keyframe percentages are set proportional to each leg's length, so the linear
+ * timing above produces an even glide instead of racing the long legs and
+ * crawling the short ones. Neither path goes past 72%, which keeps the trailing
+ * name label inside the column.
+ */
+@keyframes demo-path-a {
+  0% {
+    left: 10%;
+    top: 30%;
+  }
+  14% {
+    left: 30%;
+    top: 33%;
+  }
+  29% {
+    left: 36%;
+    top: 62%;
+  }
+  46% {
+    left: 60%;
+    top: 70%;
+  }
+  56% {
+    left: 70%;
+    top: 56%;
+  }
+  75% {
+    left: 44%;
+    top: 44%;
+  }
+  100% {
+    left: 10%;
+    top: 30%;
+  }
+}
+
+@keyframes demo-path-b {
+  0% {
+    left: 72%;
+    top: 24%;
+  }
+  19% {
+    left: 54%;
+    top: 14%;
+  }
+  34% {
+    left: 42%;
+    top: 26%;
+  }
+  50% {
+    left: 28%;
+    top: 12%;
+  }
+  77% {
+    left: 50%;
+    top: 34%;
+  }
+  100% {
+    left: 72%;
+    top: 24%;
+  }
+}
+
+/* --- narrow screens ------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  .home-inner {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+    padding: 40px 24px;
+  }
+
+  .demo {
+    max-width: 100%;
+    margin-left: 0;
+  }
+}
+
+/*
+ * Reduced motion: nothing moves, but nothing disappears either. Notes are simply
+ * there at their tilt, and each pointer keeps a static trail behind it so the
+ * signature of the product still reads.
+ *
+ * With the path animation off the dots have no position of their own — they
+ * would all pile onto the pointer — so --rest-step fans them back along a fixed
+ * diagonal, standing in for the direction of travel.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .demo-note {
+    opacity: 1;
+    transform: rotate(var(--tilt));
+    animation: none;
+  }
+
+  .demo-cursor,
+  .demo-trail {
+    animation: none;
+  }
+
+  .demo-trail {
+    transform: translate(calc(var(--rest-step) * -15px), calc(var(--rest-step) * 8px));
+  }
+
+  .home-start,
+  .home-input,
+  .recent-open {
+    transition: none;
+  }
+}
