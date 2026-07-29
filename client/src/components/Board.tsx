@@ -1,12 +1,14 @@
-import { useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { addNote, randomNoteColor, topZ } from '../collab/notes'
 import { useCanvasExtent } from '../collab/useCanvasExtent'
 import { useCursorBroadcast } from '../collab/useCursorBroadcast'
+import { useFreshNotes } from '../collab/useFreshNotes'
 import { useNoteIds } from '../collab/useNote'
 import { useUndoManager } from '../collab/useUndoManager'
 import type { BoardSession, ConnectionStatus } from '../collab/useBoardSession'
+import { tidyNotes } from '../lib/tidy'
 import { useCopyLink } from '../lib/useCopyLink'
 import { NOTE_MIN_HEIGHT, NOTE_WIDTH } from '../theme/layout'
 import { EmptyState } from './EmptyState'
@@ -41,6 +43,26 @@ function UndoIcon({ flipped = false }: { flipped?: boolean }) {
   )
 }
 
+function TidyIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="5" height="5" rx="1" />
+      <rect x="9" y="2" width="5" height="5" rx="1" />
+      <rect x="2" y="9" width="5" height="5" rx="1" />
+      <rect x="9" y="9" width="5" height="5" rx="1" />
+    </svg>
+  )
+}
+
 export function Board({ session, status }: BoardProps) {
   const { doc, notes, boardId, awareness, identity } = session
   const ids = useNoteIds(notes)
@@ -50,8 +72,46 @@ export function Board({ session, status }: BoardProps) {
   const cursor = useCursorBroadcast(awareness, canvasRef)
   const history = useUndoManager(notes)
   const link = useCopyLink()
+  const fresh = useFreshNotes(ids)
+  const [tidying, setTidying] = useState(false)
+  const tidyTimer = useRef<number | null>(null)
 
-  const handleCreate = () => {
+  useEffect(() => {
+    return () => {
+      if (tidyTimer.current !== null) window.clearTimeout(tidyTimer.current)
+    }
+  }, [])
+
+  /**
+   * Notes normally ease between positions over about a tenth of a second, which
+   * is there to smooth out somebody else's drag. That is far too quick to read
+   * as a rearrangement, so tidying briefly puts the board into a slower easing
+   * and the notes glide into the grid.
+   */
+  const handleTidy = useCallback(() => {
+    const viewport = viewportRef.current
+    if (viewport === null) return
+
+    const heights = new Map<string, number>()
+    for (const el of viewport.querySelectorAll<HTMLElement>('.note[data-note-id]')) {
+      const id = el.dataset.noteId
+      if (id !== undefined) heights.set(id, el.offsetHeight)
+    }
+
+    setTidying(true)
+    if (tidyTimer.current !== null) window.clearTimeout(tidyTimer.current)
+    tidyTimer.current = window.setTimeout(() => setTidying(false), 560)
+
+    tidyNotes(doc, {
+      width: viewport.clientWidth,
+      height: viewport.clientHeight,
+      scrollLeft: viewport.scrollLeft,
+      scrollTop: viewport.scrollTop,
+      heights
+    })
+  }, [doc])
+
+  const handleCreate = useCallback(() => {
     const viewport = viewportRef.current
     if (viewport === null) return
 
@@ -69,11 +129,29 @@ export function Board({ session, status }: BoardProps) {
       z: topZ(notes) + 1,
       author: { name: identity.name, initials: identity.initials, color: identity.color }
     })
-  }
+  }, [doc, identity, ids.length, notes])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'n' && event.key !== 'N') return
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+
+      // Otherwise typing the letter n into a note would scatter new ones
+      // across the board.
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, [contenteditable]') != null) return
+
+      event.preventDefault()
+      handleCreate()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [handleCreate])
 
   return (
     <div
-      className="board"
+      className={`board${tidying ? ' is-tidying' : ''}`}
       ref={viewportRef}
       // Pointer moves during a note drag are retargeted to the captured note but
       // still bubble through here, so the cursor keeps broadcasting mid-drag.
@@ -88,7 +166,7 @@ export function Board({ session, status }: BoardProps) {
         {ids.length === 0 && <EmptyState onCreate={handleCreate} />}
 
         {ids.map((id) => (
-          <StickyNote key={id} doc={doc} notes={notes} id={id} />
+          <StickyNote key={id} doc={doc} notes={notes} id={id} fresh={fresh.has(id)} />
         ))}
 
         <RemoteCursors awareness={awareness} />
@@ -135,10 +213,20 @@ export function Board({ session, status }: BoardProps) {
           >
             <UndoIcon flipped />
           </button>
+          <button
+            type="button"
+            className="tool"
+            onClick={handleTidy}
+            disabled={ids.length === 0}
+            title="Arrange the notes into a grid"
+            aria-label="Tidy"
+          >
+            <TidyIcon />
+          </button>
 
           <span className="toolbar-divider" aria-hidden="true" />
 
-          <button type="button" className="primary" onClick={handleCreate}>
+          <button type="button" className="primary" onClick={handleCreate} title="New note (N)">
             New note
           </button>
 

@@ -19,7 +19,12 @@ interface StickyNoteProps {
   doc: Y.Doc
   notes: NotesMap
   id: string
+  /** Arrived since the board was opened, so it is worth animating in. */
+  fresh: boolean
 }
+
+/** Must match the note-leave animation, or the note vanishes mid-fade. */
+const EXIT_MS = 170
 
 interface DragOrigin {
   pointerX: number
@@ -28,14 +33,30 @@ interface DragOrigin {
   noteY: number
 }
 
-export function StickyNote({ doc, notes, id }: StickyNoteProps) {
+export function StickyNote({ doc, notes, id, fresh }: StickyNoteProps) {
   const note = useNote(notes, id)
   const [dragging, setDragging] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   const origin = useRef<DragOrigin | null>(null)
   const frame = useRef<number | null>(null)
   const pending = useRef<{ x: number; y: number } | null>(null)
+  const exit = useRef<number | null>(null)
+
+  /**
+   * Deleting plays the note out before it leaves the document.
+   *
+   * The delay is local only. Removing the note from the Y.Map immediately would
+   * unmount this component on the same frame, so there would be nothing left to
+   * animate; instead the note is marked on its way out, and the CRDT delete —
+   * the thing peers actually see — follows once the animation has run.
+   */
+  const handleDelete = useCallback(() => {
+    if (removing) return
+    setRemoving(true)
+    exit.current = window.setTimeout(() => deleteNote(doc, id), EXIT_MS)
+  }, [doc, id, removing])
 
   /**
    * Pointer events fire far faster than the screen refreshes, and every write
@@ -60,6 +81,10 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
   useEffect(() => {
     return () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current)
+      // A peer can delete the note while our own exit is still pending, which
+      // unmounts us; the queued delete would then fire against a note that is
+      // already gone.
+      if (exit.current !== null) window.clearTimeout(exit.current)
     }
   }, [])
 
@@ -127,7 +152,13 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
 
   return (
     <div
-      className={`note${dragging ? ' is-dragging' : ''}${editing ? ' is-editing' : ''}`}
+      className={
+        `note${dragging ? ' is-dragging' : ''}${editing ? ' is-editing' : ''}` +
+        `${fresh ? ' is-fresh' : ''}${removing ? ' is-removing' : ''}`
+      }
+      // Lets the tidy layout pair a rendered height back to the note it belongs
+      // to; heights are only knowable from the DOM.
+      data-note-id={id}
       style={
         {
           left: note.x,
@@ -139,7 +170,15 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
           // Only the tilt is set here. The lift and scale are CSS variables the
           // stylesheet composes into one transform, because an inline transform
           // would outrank any :hover rule and make a hover lift impossible.
-          '--tilt': `${tilt}deg`
+          //
+          // Picking a note up straightens it, the way a hand does with a piece
+          // of paper on a desk, and letting go lets it settle back to its own
+          // angle. Set from here rather than CSS because the resting angle is
+          // derived from the note's id and only JS knows it.
+          '--tilt': dragging ? '0deg' : `${tilt}deg`,
+          // Drives the arrival ring, so a note announces itself in the colour of
+          // whoever wrote it.
+          '--author-ink': note.author?.color ?? 'transparent'
         } as React.CSSProperties
       }
       onPointerDown={handlePointerDown}
@@ -168,7 +207,7 @@ export function StickyNote({ doc, notes, id }: StickyNoteProps) {
           title="Delete note"
           aria-label="Delete note"
           style={{ color: swatch.ink }}
-          onClick={() => deleteNote(doc, id)}
+          onClick={handleDelete}
         >
           &times;
         </button>

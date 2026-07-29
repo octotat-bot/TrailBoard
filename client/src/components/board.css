@@ -64,12 +64,96 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.28),
     0 1px 0 rgb(0 0 0 / 0.07);
+  /*
+   * left/top are eased so that a note being dragged by somebody else glides
+   * instead of stuttering between the positions their updates happen to land
+   * on — the same trick the remote cursors use. Short and linear, because
+   * anything longer would visibly trail behind the person doing the dragging.
+   *
+   * The transform easing overshoots slightly, which is what makes a released
+   * note look like it settles rather than snaps.
+   */
   transition:
-    transform 140ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    transform 260ms cubic-bezier(0.34, 1.16, 0.64, 1),
+    left 110ms linear,
+    top 110ms linear,
     box-shadow 140ms ease,
     border-color 140ms ease;
   /* Opacity only. Animating the transform here would fight the tilt. */
   animation: note-in 180ms ease-out;
+}
+
+/*
+ * The arrival. `scale` is the standalone property rather than a scale() inside
+ * `transform`, so it composes with the tilt and lift already living there
+ * instead of overwriting them.
+ */
+.note.is-fresh {
+  animation: note-arrive 420ms cubic-bezier(0.34, 1.28, 0.64, 1);
+}
+
+@keyframes note-arrive {
+  from {
+    opacity: 0;
+    scale: 0.86;
+  }
+}
+
+/*
+ * A ring in the author's colour, pulsing outward once as the note lands. On a
+ * shared board this is what tells you a note appeared because a particular
+ * person put it there, tying the note back to their cursor and avatar.
+ */
+.note::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid var(--author-ink, transparent);
+  border-radius: 4px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.note.is-fresh::after {
+  animation: note-ring 620ms ease-out;
+}
+
+@keyframes note-ring {
+  from {
+    opacity: 0.85;
+    scale: 0.99;
+  }
+  to {
+    opacity: 0;
+    scale: 1.08;
+  }
+}
+
+/*
+ * While the board is tidying, positions ease slowly enough to be read as a
+ * rearrangement. Overrides the 110ms smoothing above, which exists for a very
+ * different job and is far too quick to follow across a whole board.
+ */
+.board.is-tidying .note {
+  transition:
+    transform 260ms cubic-bezier(0.34, 1.16, 0.64, 1),
+    left 460ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    top 460ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+
+/* Held for the length of the exit before the note leaves the document. */
+.note.is-removing {
+  pointer-events: none;
+  animation: note-leave 170ms ease-in forwards;
+}
+
+@keyframes note-leave {
+  to {
+    opacity: 0;
+    scale: 0.9;
+  }
 }
 
 .note:hover {
@@ -88,9 +172,16 @@
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.28),
     0 8px 18px rgb(59 66 82 / 0.13);
-  /* Deliberately omits transform: the note has to track the pointer exactly.
-     The easing is for the settle on release, not the drag itself. */
-  transition: box-shadow 140ms ease;
+  /*
+   * left/top are deliberately absent: a dragged note has to sit under the
+   * pointer exactly, and easing its position would make it swim. transform is
+   * eased on purpose though, because it carries the straightening and the
+   * lift, and those are the pickup — none of it affects tracking, which is
+   * driven entirely by left/top.
+   */
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.16, 0.64, 1),
+    box-shadow 140ms ease;
 }
 
 .note.is-editing {
@@ -247,8 +338,11 @@
   transform: translate(-50%, -50%);
   /* Deliberately note-shaped, so the placeholder reads as the outline of the
      thing you are about to make rather than a generic panel. */
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   width: 232px;
   min-height: 190px;
   padding: 20px;
@@ -270,6 +364,20 @@
 .empty:hover {
   border-color: var(--ink-muted);
   color: var(--ink);
+}
+
+.empty-mark {
+  opacity: 0.5;
+  transition:
+    opacity 140ms ease,
+    transform 220ms cubic-bezier(0.34, 1.28, 0.64, 1);
+}
+
+/* Scale rather than rotate: a plus turned through 90 degrees is the same plus,
+   so the obvious gesture here animates nothing at all. */
+.empty:hover .empty-mark {
+  opacity: 1;
+  transform: scale(1.18);
 }
 
 /* --- chrome -------------------------------------------------------------- */
@@ -533,9 +641,11 @@
  */
 @media (prefers-reduced-motion: reduce) {
   .note,
+  .board.is-tidying .note,
   .cursor,
   .status-dot,
   .empty,
+  .empty-mark,
   .primary,
   .tool,
   .note-actions,
@@ -544,8 +654,17 @@
   }
 
   /* The hover lift is motion too, not just decoration. */
-  .note {
+  .note,
+  .note.is-fresh,
+  .note.is-fresh::after,
+  .note.is-removing {
     animation: none;
+  }
+
+  /* Without the exit animation there is nothing to see, so make the outgoing
+     note disappear rather than sit there until the delete lands. */
+  .note.is-removing {
+    opacity: 0;
   }
 
   .note:hover {
